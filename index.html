@@ -76,7 +76,7 @@
   <audio id="audio" controls preload="metadata" playsinline></audio>
   <div class="status" id="status" role="status">Select an audio file to begin.</div>
   <div class="actions"><button id="play" disabled type="button">▶ Play</button><button id="reset" disabled type="button">↺ Reset</button></div>
-  <div class="help">The number increases after each complete play. Dragging the audio timeline starts a new count at 0. Your audio repeats automatically and stops after 11, 21, 51, or 108 plays. The standard audio controls are visible so you can verify that sound is working.</div>
+  <div class="help">The number increases after each complete play. Dragging the audio timeline preserves your in-progress count, but resets a completed session to 0. Your audio repeats automatically and stops after 11, 21, 51, or 108 plays. The standard audio controls are visible so you can verify that sound is working.</div>
   <details><summary>Audio troubleshooting</summary>
     <div class="event">Last audio event: <span id="event">—</span></div>
     <div class="event">File source: <span id="source">—</span></div>
@@ -179,17 +179,22 @@ Array.from(document.querySelectorAll('[data-target]')).forEach(btn=>btn.addEvent
 }));
 $('play').addEventListener('click',()=>audio.paused?play():pause());
 $('reset').addEventListener('click',reset);
-// Manual seeking starts a new counting session. Natural A-B repeats stay counted.
+// Seek during a session preserves count; seeking after completion starts a new session.
 audio.addEventListener('seeking',()=>{
   if(selecting)return;
   if(automaticSeek && audio.currentTime < 0.05)return;
   automaticSeek=false;
-  if(count>0 || done){
+  if(done || count >= target){
+    // Only start a new counting session after the selected target is complete.
     count=0;done=false;
-    status('Position changed — repetition count reset to 0.');
-    event('Manual seek; count reset');
-    paint();
+    status('Completed session restarted — count reset to 0.');
+    event('Seek after completion; count reset');
+  }else{
+    // Scrubbing within an unfinished session must not discard completed plays.
+    status('Position changed — '+count+' of '+target+' repetitions completed.');
+    event('Manual seek; count preserved');
   }
+  paint();
 });
 audio.addEventListener('seeked',()=>{automaticSeek=false;});
 audio.addEventListener('play',()=>{event('Play event');paint();});
