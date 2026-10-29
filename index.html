@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#102A28" />
+  <title>LoopCount — Repeat Audio 11, 21, 51, or 108 Times</title>
+  <meta name="description" content="Repeat your audio files exactly 11, 21, 51, or 108 times with a live repetition counter. No account, no audio upload, and no installation needed." />
+  <style>
+    :root { color-scheme: light; font: 16px/1.45 system-ui, -apple-system, Roboto, Arial, sans-serif; }
+    * { box-sizing: border-box; }
+    body { background:#f5f8f7; color:#18312e; padding:0; margin:0; }
+    .wrap { max-width:520px; padding:25px 19px 45px; margin:auto; }
+    header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:22px; }
+    h1 { margin:0; font-size:24px; letter-spacing:-.6px; }
+    header span { font-size:11px; padding:7px 9px; border-radius:30px; background:#e4f0e9; color:#366652; }
+    .card { border:1px solid #dfeae5; box-shadow:0 10px 30px #102a2810; border-radius:21px; background:white; padding:23px 20px; }
+    label.main-label { font-size:12px; font-weight:750; color:#53736b; letter-spacing:1px; text-transform:uppercase; display:block; margin:0 0 10px; }
+    .file-input { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+    .file-picker { display:flex; align-items:center; gap:13px; padding:15px; border:1.5px dashed #9abaae; border-radius:14px; background:#f7fbf8; color:#285540; cursor:pointer; transition:background .15s,border-color .15s; }
+    .file-picker:hover { background:#edf6ef; border-color:#4d9872; }
+    .file-input:focus-visible + .file-picker { outline:3px solid #86c3a2; outline-offset:3px; }
+    .file-picker-icon { display:grid; place-items:center; width:42px; height:42px; flex:none; border-radius:12px; background:#e3f1e8; color:#1d5644; }
+    .file-picker-text { display:flex; flex-direction:column; gap:2px; min-width:0; }
+    .file-picker-title { font-size:15px; font-weight:750; }
+    .file-picker-subtitle { font-size:12px; color:#668178; }
+    .file-picker-arrow { margin-left:auto; flex:none; color:#628273; }
+    .filename { font-size:12px; color:#637b73; margin-top:7px; overflow-wrap:anywhere; min-height:18px; }
+    .targets { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:10px; margin:14px 0 22px; }
+    button { cursor:pointer; touch-action: manipulation; }
+    .target { font-size:18px; font-weight:750; color:#335d50; background:#f0f5f1; border:1px solid #d2e2d9; padding:13px 6px; border-radius:13px; min-height:52px; }
+    .target.selected { background:#1d5644; color:#fff; border-color:#1d5644; }
+    .count { text-align:center; margin-top:14px; }
+    .count strong { display:block; font-size:82px; letter-spacing:-5px; line-height:1; font-variant-numeric:tabular-nums; }
+    .count .of { font-size:16px; color:#6a847b; margin-top:10px; }
+    .bar { height:8px; background:#e6f0e9; border-radius:7px; margin:22px 0 20px; overflow:hidden; }
+    .fill { background:#3a9369; height:100%; width:0; border-radius:7px; transition:width 0.15s; }
+    .status { padding:10px 11px; background:#f0f5f2; color:#355d50; font-size:14px; min-height:44px; border-radius:10px; margin:12px 0; overflow-wrap:anywhere; }
+    audio { width:100%; min-height:55px; margin:6px 0 12px; }
+    .actions { display:flex; gap:11px; margin-top:5px; }
+    #play { flex:1; border:0; background:#1d5644; color:white; font-size:16px; padding:16px 8px; border-radius:13px; font-weight:750; }
+    #reset { border:0; background:#e5f0e9; color:#2d5f4c; padding:16px; border-radius:13px; font-size:15px; font-weight:700; }
+    button:disabled { opacity:.45; cursor:not-allowed; }
+    .help { font-size:13px; color:#657a72; line-height:1.6; margin-top:17px; }
+    details { font-size:12px; margin-top:17px; color:#5a7568; }
+    summary { cursor:pointer; }
+    .event { overflow-wrap:anywhere; margin-top:7px; font-family:monospace; font-size:12px; }
+    #compat { border:1px solid #bfd4c8; border-radius:10px; background:white; color:#285340; padding:10px 12px; font-weight:600; margin-top:11px; }
+    footer { padding:20px 5px 0; color:#789087; font-size:12px; text-align:center; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+<header><h1>LoopCount</h1><span>Private audio • No upload</span></header>
+<div class="card">
+  <label class="main-label" for="file">1. Choose audio</label>
+  <input id="file" class="file-input" type="file" accept="audio/mpeg,audio/mp3,audio/*,.mp3" aria-describedby="filename" />
+  <label class="file-picker" for="file">
+    <span class="file-picker-icon" aria-hidden="true">
+      <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V3m0 0L7 8m5-5 5 5"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>
+    </span>
+    <span class="file-picker-text"><span class="file-picker-title">Choose audio file</span><span class="file-picker-subtitle">Audio from your device</span></span>
+    <span class="file-picker-arrow" aria-hidden="true">›</span>
+  </label>
+  <div class="filename" id="filename" aria-live="polite">No file selected</div>
+  <label class="main-label" style="margin-top:21px">2. Play exactly</label>
+  <div class="targets">
+    <button class="target" data-target="11" type="button" aria-pressed="false">11 times</button>
+    <button class="target selected" data-target="21" type="button" aria-pressed="true">21 times</button>
+    <button class="target" data-target="51" type="button" aria-pressed="false">51 times</button>
+    <button class="target" data-target="108" type="button" aria-pressed="false">108 times</button>
+  </div>
+  <div class="count"><strong id="count">0</strong><div class="of">of <span id="target">21</span> completed</div></div>
+  <div class="bar"><div class="fill" id="fill"></div></div>
+  <label class="main-label" for="audio">3. Playback</label>
+  <audio id="audio" controls preload="metadata" playsinline></audio>
+  <div class="status" id="status" role="status">Select an audio file to begin.</div>
+  <div class="actions"><button id="play" disabled type="button">▶ Play</button><button id="reset" disabled type="button">↺ Reset</button></div>
+  <div class="help">The number increases after each complete play. Your audio repeats automatically and stops after 11, 21, 51, or 108 plays. The standard audio controls are visible so you can verify that sound is working.</div>
+  <details><summary>Audio troubleshooting</summary>
+    <div class="event">Last audio event: <span id="event">—</span></div>
+    <div class="event">File source: <span id="source">—</span></div>
+    <button id="compat" type="button" disabled>Retry in compatibility mode</button>
+    <p>If there's no sound, check Android media volume and try opening this HTML in Chrome (not in an app's preview screen). If the browser blocks playback, the status above will show an error.</p>
+  </details>
+</div>
+<footer>No account required. Your audio stays on your device — it is never uploaded.</footer>
+</div>
+<script>
+(function(){
+'use strict';
+const $=id=>document.getElementById(id);
+const audio=$('audio');
+const fileInput=$('file');
+let file=null, sourceUrl=null, target=21, count=0, done=false, switching=false, selecting=false, sourceMode='data';
+function status(s){$('status').textContent=s;}
+function event(s){$('event').textContent=s;}
+function paint(){
+  $('count').textContent=count;
+  $('target').textContent=target;
+  $('fill').style.width=(100*count/target).toFixed(2)+'%';
+  $('play').disabled=!file;
+  $('reset').disabled=!file;
+  $('compat').disabled=!file;
+  $('play').textContent=audio.paused?'▶ Play':'Ⅱ Pause';
+}
+function reset(){
+  audio.pause();
+  count=0; done=false;
+  try{ audio.currentTime=0; }catch(_){}
+  status(file?'Ready. Press Play.':'Select an audio file to begin.');
+  paint();
+}
+function errorMessage(){
+  const errors={1:'Loading was interrupted',2:'A network/file loading error occurred',3:'Android could not decode this audio',4:'This file format or source is unsupported'};
+  return audio.error ? (errors[audio.error.code] || 'Unknown audio error') : 'Playback was interrupted';
+}
+async function loadFile(mode){
+  if(!file)return;
+  selecting=true;
+  audio.pause();audio.removeAttribute('src');audio.load();
+  if(sourceUrl){URL.revokeObjectURL(sourceUrl);sourceUrl=null;}
+  sourceMode=mode;
+  count=0;done=false;
+  status('Preparing audio…');event('Loading');
+  try {
+    if(mode==='data' && file.size < 25*1024*1024){
+      // Using FileReader is a reliable alternative for offline HTML opened from Android Downloads.
+      const data=await new Promise((resolve,reject)=>{
+        const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=()=>reject(r.error || new Error('Cannot read selected file'));r.readAsDataURL(file);
+      });
+      audio.src=data;
+    }else{
+      sourceUrl=URL.createObjectURL(file);
+      audio.src=sourceUrl;
+      sourceMode='blob';
+    }
+    $('source').textContent=sourceMode==='data'?'Local file (compatibility mode)':'Local file (object URL)';
+    audio.load();
+    status('Ready. Press Play.');
+    event('File loaded; waiting for Play');
+  }catch(err){status('Cannot read file: '+(err.message||String(err)));event('File read error');}
+  selecting=false;
+  paint();
+}
+async function play(){
+  if(!file || selecting)return;
+  if(done){count=0;done=false;try{audio.currentTime=0;}catch(_){}}
+  try{
+    await audio.play();
+    status('Playing repetition '+(count+1)+' of '+target);
+    event('Playing');
+  }catch(err){
+    status('Playback blocked: '+(err.message||err.name||'Unknown error')+'. Try the built-in audio Play button or compatibility mode.');
+    event('Play failed: '+(err.name||'unknown'));
+  }
+  paint();
+}
+function pause(){audio.pause();status('Paused — '+count+' completed');paint();}
+fileInput.addEventListener('change',async()=>{
+  const f=fileInput.files && fileInput.files[0];if(!f)return;
+  file=f;$('filename').textContent=f.name;
+  await loadFile('data');
+});
+$('compat').addEventListener('click',()=>loadFile(sourceMode==='data'?'blob':'data'));
+Array.from(document.querySelectorAll('[data-target]')).forEach(btn=>btn.addEventListener('click',()=>{
+  target=Number(btn.dataset.target);
+  document.querySelectorAll('[data-target]').forEach(b=>{b.classList.toggle('selected',b===btn);b.setAttribute('aria-pressed',String(b===btn));});
+  reset();
+}));
+$('play').addEventListener('click',()=>audio.paused?play():pause());
+$('reset').addEventListener('click',reset);
+audio.addEventListener('play',()=>{event('Play event');paint();});
+audio.addEventListener('playing',()=>{event('Playing audio');if(!done) status('Playing repetition '+(count+1)+' of '+target);paint();});
+audio.addEventListener('pause',()=>{event('Pause event');if(!done && !selecting && count<target)status('Paused — '+count+' completed');paint();});
+audio.addEventListener('ended',async()=>{
+  count+=1;
+  paint();
+  event('Finished repetition '+count);
+  if(count>=target){done=true;status('✓ Completed '+target+' repetitions. Stopped.');paint();return;}
+  try{
+    audio.currentTime=0;
+    await audio.play();
+    status('Playing repetition '+(count+1)+' of '+target);
+  }catch(err){
+    status('Next repetition was blocked by Android. Tap Play to continue ('+(err.name||'playback error')+').');
+    event('Auto-replay blocked: '+(err.name||'unknown'));
+  }
+  paint();
+});
+audio.addEventListener('error',()=>{
+  if(selecting || !file)return;
+  status(errorMessage()+'. Try compatibility mode or another audio file.');
+  event('Audio error code '+(audio.error?.code||'?'));
+});
+audio.addEventListener('stalled',()=>event('Stalled — file buffering'));
+audio.addEventListener('waiting',()=>event('Waiting for audio data'));
+audio.addEventListener('loadedmetadata',()=>event('Loaded: '+(Number.isFinite(audio.duration)?audio.duration.toFixed(1)+' seconds':'unknown length')));
+paint();
+})();
+</script>
+</body>
+</html>
