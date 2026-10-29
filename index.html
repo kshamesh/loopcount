@@ -76,7 +76,7 @@
   <audio id="audio" controls preload="metadata" playsinline></audio>
   <div class="status" id="status" role="status">Select an audio file to begin.</div>
   <div class="actions"><button id="play" disabled type="button">▶ Play</button><button id="reset" disabled type="button">↺ Reset</button></div>
-  <div class="help">The number increases after each complete play. Dragging the audio timeline preserves your in-progress count, but resets a completed session to 0. Your audio repeats automatically and stops after 11, 21, 51, or 108 plays. The standard audio controls are visible so you can verify that sound is working.</div>
+  <div class="help">The number increases after each complete play. Dragging the audio timeline preserves your completed count but does not count as a repetition. Only a full play from the beginning counts; seeking after a completed session resets the count to 0. Your audio repeats automatically and stops after 11, 21, 51, or 108 plays. The standard audio controls are visible so you can verify that sound is working.</div>
   <details><summary>Audio troubleshooting</summary>
     <div class="event">Last audio event: <span id="event">—</span></div>
     <div class="event">File source: <span id="source">—</span></div>
@@ -93,6 +93,25 @@ const $=id=>document.getElementById(id);
 const audio=$('audio');
 const fileInput=$('file');
 let file=null, sourceUrl=null, target=21, count=0, done=false, selecting=false, sourceMode='data', automaticSeek=false;
+// A browser may dispatch 'ended' when a user drags the native seek handle to
+// the end. Count only a complete, uninterrupted playback from near the start.
+let cycleEligible=true, playedSeconds=0, playingSince=null;
+function stopPlaybackClock(){
+  if(playingSince!==null){
+    playedSeconds+=(performance.now()-playingSince)/1000*audio.playbackRate;
+    playingSince=null;
+  }
+}
+function startPlaybackClock(){if(playingSince===null && !audio.paused && !audio.ended) playingSince=performance.now();}
+function beginCycle(){playingSince=null;playedSeconds=0;cycleEligible=true;}
+function qualifiesAsCompletePlay(){
+  const duration=audio.duration;
+  if(!cycleEligible || !Number.isFinite(duration) || duration<=0)return false;
+  // Allow a small browser/media timing tolerance but not skipped playback.
+  const tolerance=Math.max(0.15,Math.min(1,duration*0.07));
+  return playedSeconds>=duration-tolerance;
+}
+
 function status(s){$('status').textContent=s;}
 function event(s){$('event').textContent=s;}
 function paint(){
@@ -116,6 +135,7 @@ function rewind(){
 function reset(){
   audio.pause();
   count=0; done=false;
+  beginCycle();
   rewind();
   status(file?'Ready. Press Play.':'Select an audio file to begin.');
   paint();
@@ -131,6 +151,7 @@ async function loadFile(mode){
   if(sourceUrl){URL.revokeObjectURL(sourceUrl);sourceUrl=null;}
   sourceMode=mode;
   count=0;done=false;
+  beginCycle();
   status('Preparing audio…');event('Loading');
   try {
     if(mode==='data' && file.size < 25*1024*1024){
@@ -154,7 +175,7 @@ async function loadFile(mode){
 }
 async function play(){
   if(!file || selecting)return;
-  if(done){count=0;done=false;rewind();}
+  if(done){count=0;done=false;beginCycle();rewind();}
   try{
     await audio.play();
     status('Playing repetition '+(count+1)+' of '+target);
@@ -179,33 +200,63 @@ Array.from(document.querySelectorAll('[data-target]')).forEach(btn=>btn.addEvent
 }));
 $('play').addEventListener('click',()=>audio.paused?play():pause());
 $('reset').addEventListener('click',reset);
-// Seek during a session preserves count; seeking after completion starts a new session.
+// Manual seeking starts a new counting session. Natural A-B repeats stay counted.
 audio.addEventListener('seeking',()=>{
   if(selecting)return;
   if(automaticSeek && audio.currentTime < 0.05)return;
   automaticSeek=false;
-  if(done || count >= target){
-    // Only start a new counting session after the selected target is complete.
+  stopPlaybackClock();
+  // Returning to the start can begin a new full play. All other manual seeks
+  // invalidate only the current attempt, never the completed-repeat counter.
+  cycleEligible=audio.currentTime<=0.05;
+  playedSeconds=0;
+  playingSince=null;
+  if(done || count>=target){
     count=0;done=false;
     status('Completed session restarted — count reset to 0.');
     event('Seek after completion; count reset');
   }else{
-    // Scrubbing within an unfinished session must not discard completed plays.
     status('Position changed — '+count+' of '+target+' repetitions completed.');
     event('Manual seek; count preserved');
   }
   paint();
+});audio.addEventListener('seeked',()=>{
+  automaticSeek=false;
+  if(audio.currentTime<=0.05 && !cycleEligible)beginCycle();
+  if(!audio.seeking)startPlaybackClock();
 });
-audio.addEventListener('seeked',()=>{automaticSeek=false;});
 audio.addEventListener('play',()=>{event('Play event');paint();});
-audio.addEventListener('playing',()=>{if(done){count=0;done=false;}event('Playing audio');status('Playing repetition '+(count+1)+' of '+target);paint();});
-audio.addEventListener('pause',()=>{event('Pause event');if(!done && !selecting && count<target)status('Paused — '+count+' completed');paint();});
+audio.addEventListener('playing',()=>{
+  if(done){count=0;done=false;beginCycle();}
+  if(audio.currentTime<=0.05 && !cycleEligible)beginCycle();
+  startPlaybackClock();
+  event('Playing audio');status('Playing repetition '+(count+1)+' of '+target);paint();
+});
+audio.addEventListener('pause',()=>{
+  stopPlaybackClock();
+  event('Pause event');if(!done && !selecting && count<target)status('Paused — '+count+' completed');paint();
+});
 audio.addEventListener('ended',async()=>{
+  stopPlaybackClock();
+  if(!qualifiesAsCompletePlay()){
+    // Reaching the end via scrubbing is not a completed audio repetition.
+    const hadPlayback=playedSeconds>0.5;
+    event('Skipped seek-induced end (not a complete play)');
+    if(hadPlayback){
+      beginCycle();
+      try{rewind();await audio.play();status('Skipped partial play; starting a full repetition.');}
+      catch(err){status('Partial play not counted. Tap Play to restart.');}
+    }else{
+      status('Seeking to the end does not count. Press Play for a full repetition.');
+    }
+    paint();return;
+  }
   count+=1;
   paint();
   event('Finished repetition '+count);
   if(count>=target){done=true;status('✓ Completed '+target+' repetitions. Stopped.');paint();return;}
   try{
+    beginCycle();
     rewind();
     await audio.play();
     status('Playing repetition '+(count+1)+' of '+target);
