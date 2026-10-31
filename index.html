@@ -33,6 +33,16 @@
     .count { text-align:center; margin-top:14px; }
     .count strong { display:block; font-size:82px; letter-spacing:-5px; line-height:1; font-variant-numeric:tabular-nums; }
     .count .of { font-size:16px; color:#6a847b; margin-top:10px; }
+    .estimate { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:0 0 24px; }
+    .estimate-item { min-width:0; padding:15px 12px; border:1px solid #dce9e1; border-radius:13px; background:#f7faf8; }
+    .estimate-item.remaining { background:#eaf4ed; border-color:#c7e0ce; }
+    .estimate-label { font-size:11px; font-weight:750; color:#527469; text-transform:uppercase; letter-spacing:.5px; }
+    .estimate-value { margin-top:5px; font-size:24px; font-variant-numeric:tabular-nums; line-height:1.25; font-weight:750; color:#1d5644; white-space:nowrap; }
+    .estimate-note { font-size:12px; line-height:1.5; color:#688176; margin:0 0 16px; }
+    .duration-detail { margin:12px 0 8px; padding:9px 11px; border-radius:10px; background:#f7faf8; font-size:12px; color:#47695e; line-height:1.5; }
+    .duration-detail strong { color:#1d5644; font-variant-numeric:tabular-nums; }
+
+    @media(max-width:380px) { .estimate-value {font-size:21px;} .estimate-item {padding:12px 9px;} }
     .bar { height:8px; background:#e6f0e9; border-radius:7px; margin:22px 0 20px; overflow:hidden; }
     .fill { background:#3a9369; height:100%; width:0; border-radius:7px; transition:width 0.15s; }
     .status { padding:10px 11px; background:#f0f5f2; color:#355d50; font-size:14px; min-height:44px; border-radius:10px; margin:12px 0; overflow-wrap:anywhere; }
@@ -40,10 +50,29 @@
     .actions { display:flex; gap:11px; margin-top:5px; }
     #play { flex:1; border:0; background:#1d5644; color:white; font-size:16px; padding:16px 8px; border-radius:13px; font-weight:750; }
     #reset { border:0; background:#e5f0e9; color:#2d5f4c; padding:16px; border-radius:13px; font-size:15px; font-weight:700; }
+    .actions button { display:inline-flex; align-items:center; justify-content:center; gap:7px; }
+    .control-icon { display:block; flex:none; width:17px; height:17px; }
+    .control-icon.is-hidden { display:none; }
     button:disabled { opacity:.45; cursor:not-allowed; }
     .help { font-size:13px; color:#657a72; line-height:1.6; margin-top:17px; }
     details { font-size:12px; margin-top:17px; color:#5a7568; }
     summary { cursor:pointer; }
+    .info-accordion { border:1px solid #dce9e1; border-radius:12px; padding:0; overflow:hidden; margin-top:14px; color:#285540; }
+    .info-accordion > summary { padding:14px 15px; font-size:14px; font-weight:750; list-style:none; display:flex; align-items:center; justify-content:space-between; gap:10px; }
+    .info-accordion > summary::-webkit-details-marker { display:none; }
+    .accordion-chevron { width:18px; height:18px; display:block; flex:none; color:#527469; transition:transform .15s ease; transform-origin:center; }
+    .info-accordion[open] > summary .accordion-chevron { transform:rotate(180deg); }
+    @media (prefers-reduced-motion:reduce) { .accordion-chevron { transition:none; } }
+    .info-content { padding:0 15px 15px; line-height:1.6; color:#4d6a60; font-size:13px; }
+    .info-step { margin-top:12px; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.5px; color:#527469; }
+    .calc-rows { display:grid; grid-template-columns:minmax(0,1fr) auto; column-gap:10px; row-gap:7px; margin-top:10px; }
+    .calc-rows strong, .calc-equation strong { font-variant-numeric:tabular-nums; color:#1d5644; }
+    .calc-equation { margin:7px 0 0; padding:10px; border-radius:10px; background:#f3f8f5; text-align:center; font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
+    .calc-answer { padding:10px 12px; border-radius:10px; background:#eaf4ed; margin-top:12px; display:flex; align-items:center; justify-content:space-between; gap:8px; }
+    .calc-answer strong { font-size:20px; color:#1d5644; font-variant-numeric:tabular-nums; }
+    .calc-note { font-size:12px; margin:9px 0 0; }
+    .calc-divider { border:0; border-top:1px solid #e2ece7; margin:15px 0; }
+    .info-accordion > summary:focus-visible { outline:3px solid #86c3a2; outline-offset:-3px; }
     .event { overflow-wrap:anywhere; margin-top:7px; font-family:monospace; font-size:12px; }
     #compat { border:1px solid #bfd4c8; border-radius:10px; background:white; color:#285340; padding:10px 12px; font-weight:600; margin-top:11px; }
     footer { padding:20px 5px 0; color:#789087; font-size:12px; text-align:center; }
@@ -72,16 +101,66 @@
   </div>
   <div class="count"><strong id="count">0</strong><div class="of">of <span id="target">21</span> completed</div></div>
   <div class="bar"><div class="fill" id="fill"></div></div>
+  <div class="estimate" aria-label="Session time estimates">
+    <div class="estimate-item">
+      <div class="estimate-label">Total duration</div>
+      <div class="estimate-value" id="total-time">—</div>
+    </div>
+    <div class="estimate-item remaining">
+      <div class="estimate-label">Time remaining</div>
+      <div class="estimate-value" id="remaining-time" role="timer">—</div>
+    </div>
+  </div>
+  <p class="estimate-note">Estimate uses the current playback speed. Seeking or pausing may extend the session.</p>
   <label class="main-label" for="audio">3. Playback</label>
   <audio id="audio" controls preload="metadata" playsinline></audio>
   <div class="status" id="status" role="status">Select an audio file to begin.</div>
-  <div class="actions"><button id="play" disabled type="button">▶ Play</button><button id="reset" disabled type="button">↺ Reset</button></div>
+  <div class="actions">
+    <button id="play" disabled type="button" aria-label="Play audio">
+      <svg id="play-icon" class="control-icon" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M8 5.3a1 1 0 0 1 1.5-.86l10 6.7a1 1 0 0 1 0 1.72l-10 6.7A1 1 0 0 1 8 18.7z"/></svg>
+      <svg id="pause-icon" class="control-icon" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
+      <span id="play-label">Play</span>
+    </button>
+    <button id="reset" disabled type="button">
+      <svg class="control-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11a9 9 0 1 1 2.6 6.4"/><path d="M3 4v7h7"/></svg>
+      <span>Reset</span>
+    </button>
+  </div>
   <div class="help">The number increases after each complete play. Dragging the audio timeline preserves your completed count but does not count as a repetition. Only a full play from the beginning counts; seeking after a completed session resets the count to 0. Your audio repeats automatically and stops after 11, 21, 51, or 108 plays. The standard audio controls are visible so you can verify that sound is working.</div>
-  <details><summary>Audio troubleshooting</summary>
+  <details class="info-accordion" id="calculation-details">
+    <summary><span>How is time calculated?</span><svg class="accordion-chevron" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></summary>
+    <div class="info-content">
+      <p class="calc-note" id="calc-intro">Choose an audio file to see your calculation.</p>
+      <div id="calc-worked" hidden>
+        <div class="info-step">1. Your selected values</div>
+        <div class="calc-rows">
+          <span>Precise audio length</span><strong id="calc-duration">—</strong>
+          <span>Repetitions</span><strong id="calc-repeats">—</strong>
+          <span>Playback speed</span><strong id="calc-speed">—</strong>
+        </div>
+        <div class="info-step">2. Calculate total seconds</div>
+        <div class="calc-equation" id="calc-multiply">—</div>
+        <p class="calc-note" id="calc-rounding">—</p>
+        <div class="info-step">3. Convert seconds to minutes and seconds</div>
+        <div class="calc-equation" id="calc-divide">—</div>
+        <div class="calc-equation" id="calc-remainder">—</div>
+        <div class="calc-answer"><span>Estimated total duration</span><strong id="calc-result">—</strong></div>
+        <p class="calc-note" id="calc-format-note">A colon separates minutes and seconds. It is not a decimal point.</p>
+        <hr class="calc-divider" />
+        <div class="info-step">How is remaining time calculated?</div>
+        <p class="calc-note">The timer subtracts playback progress from the remaining repetitions. Pausing freezes the estimate. Seeking can increase it if a partial play must be repeated from the beginning.</p>
+        <p class="calc-note">Currently completed: <strong id="calc-completed">0 of 21</strong>. Estimated time left: <strong id="calc-remaining">—</strong>.</p>
+      </div>
+    </div>
+  </details>
+  <details class="info-accordion" id="troubleshooting-details"><summary><span>Audio Troubleshooting</span><svg class="accordion-chevron" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></summary>
+    <div class="info-content">
+    <div class="duration-detail" id="duration-detail" aria-label="Exact duration used for the estimate" hidden></div>
     <div class="event">Last audio event: <span id="event">—</span></div>
     <div class="event">File source: <span id="source">—</span></div>
     <button id="compat" type="button" disabled>Retry in compatibility mode</button>
     <p>If there's no sound, check Android media volume and try opening this HTML in Chrome (not in an app's preview screen). If the browser blocks playback, the status above will show an error.</p>
+    </div>
   </details>
 </div>
 <footer>No account required. Your audio stays on your device — it is never uploaded.</footer>
@@ -112,6 +191,62 @@ function qualifiesAsCompletePlay(){
   return playedSeconds>=duration-tolerance;
 }
 
+// Estimate using the same completed-repeat counter and media timeline as playback.
+// Invalidated partial plays have to restart from the beginning before they count.
+function formatTime(seconds, keepPositive=false){
+  if(!Number.isFinite(seconds) || seconds<0)return '—';
+  // Browser media metadata often includes fractional seconds (e.g. 1.01s).
+  // Round to the nearest whole second instead of always rounding up.
+  // For a running countdown, avoid showing 0:00 before playback completes.
+  const rounded=Math.round(seconds);
+  const total=keepPositive && seconds>0 ? Math.max(1,rounded) : rounded;
+  const h=Math.floor(total/3600), m=Math.floor((total%3600)/60), s=total%60;
+  if(h>0)return h+':'+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+  return m+':'+String(s).padStart(2,'0');
+}
+function updateTimeEstimate(){
+  const duration=audio.duration;
+  const valid=!!file && Number.isFinite(duration) && duration>0 && Number.isFinite(audio.playbackRate) && audio.playbackRate>0;
+  if(!valid){$('total-time').textContent='—';$('remaining-time').textContent='—';$('duration-detail').hidden=true;$('calc-worked').hidden=true;$('calc-intro').hidden=false;return;}
+  const rate=audio.playbackRate;
+  const exactTotal=duration*target/rate;
+  $('total-time').textContent=formatTime(exactTotal);
+  // A visible worked example uses the identical underlying duration and rate
+  // as the estimate. Round ONLY the final total for MM:SS presentation.
+  const roundedTotal=Math.round(exactTotal);
+  const hours=Math.floor(roundedTotal/3600);
+  const minutes=Math.floor((roundedTotal%3600)/60);
+  const seconds=roundedTotal%60;
+  const wholeMinutes=Math.floor(roundedTotal/60);
+  const secondRemainder=roundedTotal%60;
+  $('calc-intro').hidden=true;
+  $('calc-worked').hidden=false;
+  $('calc-duration').textContent=duration.toFixed(2)+' s';
+  $('calc-repeats').textContent=target+' times';
+  $('calc-speed').textContent=rate.toFixed(2)+'×';
+  $('calc-multiply').textContent=duration.toFixed(2)+' × '+target+' ÷ '+rate.toFixed(2)+' ≈ '+exactTotal.toFixed(2)+' seconds';
+  $('calc-rounding').textContent='Round the final result to the nearest whole second: '+roundedTotal+' seconds. The browser may use more decimal places than shown here.';
+  $('calc-divide').textContent=roundedTotal+' ÷ 60 = '+wholeMinutes+' complete minute'+(wholeMinutes===1?'':'s')+', remainder '+secondRemainder+' seconds';
+  $('calc-remainder').textContent=roundedTotal+' − ('+wholeMinutes+' × 60) = '+secondRemainder+' seconds';
+  $('calc-result').textContent=formatTime(exactTotal);
+  $('calc-format-note').textContent=hours>0
+    ? 'In H:MM:SS, the parts mean hours, minutes and seconds—not decimal hours.'
+    : 'In M:SS, '+minutes+':'+String(seconds).padStart(2,'0')+' means '+minutes+' minute'+(minutes===1?'':'s')+' and '+seconds+' second'+(seconds===1?'':'s')+'—not '+minutes+'.'+String(seconds).padStart(2,'0')+' decimal minutes.';
+  $('calc-completed').textContent=count+' of '+target;
+  // Native audio controls often display whole seconds only; use the actual
+  // browser duration in the estimate and expose the precise value to users.
+  // E.g. a player that shows 0:01 may report 1.45 s, which is ~0:16 at 11x.
+  $('duration-detail').hidden=false;
+  $('duration-detail').innerHTML='Browser-reported audio length: <strong>'+duration.toFixed(2)+' s</strong><span> · </span>'+duration.toFixed(2)+' × '+target+' ÷ '+rate.toFixed(2)+' = <strong>'+exactTotal.toFixed(2)+' s</strong> (rounded for display)';
+  if(done || count>=target){$('remaining-time').textContent='0:00';$('calc-remaining').textContent='0:00';return;}
+  const position=Math.max(0,Math.min(duration,Number.isFinite(audio.currentTime)?audio.currentTime:0));
+  // Browser's ended event advances the count before internal rewind completes.
+  const currentPosition=audio.ended && cycleEligible ? 0 : position;
+  const fullReplays=target-count-(cycleEligible?1:0);
+  const remainingSeconds=(Math.max(0,fullReplays)*duration + (duration-currentPosition))/rate;
+  $('remaining-time').textContent=formatTime(remainingSeconds,true);
+  $('calc-remaining').textContent=$('remaining-time').textContent;
+}
 function status(s){$('status').textContent=s;}
 function event(s){$('event').textContent=s;}
 function paint(){
@@ -121,7 +256,11 @@ function paint(){
   $('play').disabled=!file;
   $('reset').disabled=!file;
   $('compat').disabled=!file;
-  $('play').textContent=audio.paused?'▶ Play':'Ⅱ Pause';
+  $('play-icon').classList.toggle('is-hidden',!audio.paused);
+  $('pause-icon').classList.toggle('is-hidden',audio.paused);
+  $('play-label').textContent=audio.paused?'Play':'Pause';
+  $('play').setAttribute('aria-label',audio.paused?'Play audio':'Pause audio');
+  updateTimeEstimate();
 }
 // Internal rewinds must not be mistaken for a user dragging the timeline.
 function rewind(){
@@ -225,6 +364,9 @@ audio.addEventListener('seeking',()=>{
   if(audio.currentTime<=0.05 && !cycleEligible)beginCycle();
   if(!audio.seeking)startPlaybackClock();
 });
+audio.addEventListener('timeupdate',updateTimeEstimate);
+audio.addEventListener('durationchange',updateTimeEstimate);
+audio.addEventListener('ratechange',updateTimeEstimate);
 audio.addEventListener('play',()=>{event('Play event');paint();});
 audio.addEventListener('playing',()=>{
   if(done){count=0;done=false;beginCycle();}
@@ -273,7 +415,7 @@ audio.addEventListener('error',()=>{
 });
 audio.addEventListener('stalled',()=>event('Stalled — file buffering'));
 audio.addEventListener('waiting',()=>event('Waiting for audio data'));
-audio.addEventListener('loadedmetadata',()=>event('Loaded: '+(Number.isFinite(audio.duration)?audio.duration.toFixed(1)+' seconds':'unknown length')));
+audio.addEventListener('loadedmetadata',()=>{event('Loaded: '+(Number.isFinite(audio.duration)?audio.duration.toFixed(1)+' seconds':'unknown length'));updateTimeEstimate();});
 paint();
 })();
 </script>
